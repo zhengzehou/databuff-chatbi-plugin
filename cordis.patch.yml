@@ -1,0 +1,14 @@
+# Install the plugin package into the web profile first, then start with:
+# dsh web --patch E:/workspace/vscode/dsh/databuff-chatbi-plugin/cordis.patch.yml
+#
+# Register DataBuff alongside DSH's shipped presets. Keep "standard" as the
+# deployment default; users can select databuff-chatbi for a new session.
+- id: agent-presets
+  config:
+    default: standard
+    roots:
+      - path: C:/Users/zhengmingzhi/AppData/Roaming/io.github.hairyf.deepseek-harness-desktop/dev/dependencies/dsh/node_modules/@deepseek-ai/dsh-agent-presets/presets
+        trust: system
+      - path: E:/workspace/vscode/dsh/databuff-chatbi-plugin/preset
+        trust: system
+    includeUserRoot: true
