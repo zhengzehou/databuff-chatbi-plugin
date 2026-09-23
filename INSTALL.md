@@ -52,16 +52,16 @@ or as host settings:
 
 ```sh
 # Preferred when the endpoint has a non-default path or scheme:
-export DATABUFF_MCP_URL='http://databuff:27403/mcp'
+export DATABUFF_MCP_URL='http://databuff:27403/webapi/mcp'
 
 # Or let the plugin construct http://HOST:PORT/PATH:
 export DATABUFF_MCP_HOST='databuff'
 export DATABUFF_MCP_PORT='27403'
-export DATABUFF_MCP_PATH='/mcp'
+export DATABUFF_MCP_PATH='/webapi/mcp'
 ```
 
 `DATABUFF_MCP_URL` takes precedence over `DATABUFF_MCP_HOST`. `DATABUFF_MCP_HOST`
-may be a plain hostname/IP or an `http(s)://` base URL; the default `/mcp` path
+may be a plain hostname/IP or an `http(s)://` base URL; the default `/webapi/mcp` path
 is appended when needed. If the MCP endpoint requires a service token, set
 `DATABUFF_MCP_TOKEN`; the plugin sends it as `Authorization: Bearer ...`.
 For a preformatted header, use `DATABUFF_MCP_AUTHORIZATION` instead.
@@ -91,7 +91,7 @@ for example in Docker Compose:
 environment:
   DATABUFF_MCP_HOST: databuff
   DATABUFF_MCP_PORT: "27403"
-  DATABUFF_MCP_PATH: /mcp
+  DATABUFF_MCP_PATH: /webapi/mcp
   DATABUFF_DSH_WORKSPACE_ROOT: /data/logs/dsh/workspace
 ```
 
