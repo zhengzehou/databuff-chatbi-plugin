@@ -1,0 +1,4 @@
+interface:
+  display_name: "DataBuff 运维专家"
+  short_description: "关联分析应用 APM、系统指标和服务器硬件资源问题"
+  default_prompt: "使用 $databuff-operations 诊断指定服务和服务器的运行问题。"

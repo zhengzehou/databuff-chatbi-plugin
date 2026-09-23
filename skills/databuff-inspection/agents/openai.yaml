@@ -1,0 +1,4 @@
+interface:
+  display_name: "DataBuff 智能巡检"
+  short_description: "执行 DataBuff 服务健康巡检、异常发现与诊断分析流程"
+  default_prompt: "使用 $databuff-inspection 对指定服务执行健康巡检并输出结论。"

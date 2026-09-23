@@ -1,14 +1,92 @@
 # Install the plugin package into the web profile first, then start with:
-# dsh web --patch E:/workspace/vscode/dsh/databuff-chatbi-plugin/cordis.patch.yml
+# dsh web --patch <plugin-root>/cordis.patch.yml
 #
-# Register DataBuff alongside DSH's shipped presets. Keep "standard" as the
-# deployment default; users can select databuff-chatbi for a new session.
-- id: agent-presets
+# Locked appliance mode is the default. Only the server-side environment
+# variable DATABUFF_DSH_ADMIN_MODE=true restores DSH administration surfaces
+# and the shipped preset roster. This switch is intentionally not exposed in
+# the browser UI.
+- id: agent-preset-registry
   config:
-    default: standard
-    roots:
-      - path: C:/Users/zhengmingzhi/AppData/Roaming/io.github.hairyf.deepseek-harness-desktop/dev/dependencies/dsh/node_modules/@deepseek-ai/dsh-agent-presets/presets
-        trust: system
-      - path: E:/workspace/vscode/dsh/databuff-chatbi-plugin/preset
-        trust: system
-    includeUserRoot: true
+    default: databuff-chatbi
+
+# Remove all ordinary administration and preset-switching entrances while
+# locked. Host-side managers are disabled too, so hiding UI is not the only
+# boundary. Restart DSH after changing DATABUFF_DSH_ADMIN_MODE.
+- id: plugin-manager
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+
+- id: ui-plugin-manager
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+
+- id: ui-settings-general
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+
+- id: ui-settings-plugins
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+
+- id: ui-settings-plugin-inventory
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+
+- id: ui-agent-preset
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+
+# The desktop pet plugin patches a button beside the settings trigger. Disable
+# the feature at its loader entry in locked mode; the client guard also removes
+# any stale DOM left by an earlier mount.
+- id: dsh-tauri-pet
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+
+# Host-side enforcement: locked clients cannot choose another cwd or preset,
+# even by calling session.create directly. The server directory is created at
+# startup. Admin mode disables the rewrite and restores the picker.
+- insert:
+    # DSH 0.1.7 declares presets as ordinary profile rows. Reuse the bundled
+    # composition file through Cordis include so the legacy standalone preset
+    # and the registry-backed declaration cannot drift apart.
+    - id: preset-databuff-chatbi
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: databuff-chatbi
+        name: DataBuff ChatBI
+        description: DataBuff/APM 查询、巡检、诊断、定位、报告与预测
+        order: 0
+        plugins:
+          - id: databuff-chatbi-composition
+            name: '@deepseek-ai/cordis-plugin-include'
+            config:
+              # The package is installed under the active profile's
+              # node_modules, so this remains portable across machines.
+              path: ./node_modules/@databuff/dsh-plugin-chatbi/preset/databuff-chatbi/agent.cordis.yml
+
+    # Register the package root as a loader entry as well as the host policy
+    # subpath. This is what makes package.json#dsh.client discoverable by the
+    # web client's module collector.
+    - id: databuff-chatbi
+      name: '@databuff/dsh-plugin-chatbi'
+      config:
+        presentationOnly: true
+
+    - id: databuff-workspace-policy
+      name: '@databuff/dsh-plugin-chatbi/workspace-policy'
+      config:
+        locked: !!js >-
+          (process.env.DATABUFF_DSH_WORKSPACE_LOCKED || 'true').toLowerCase() !== 'false'
+          && (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+        root: !!js >-
+          process.env.DATABUFF_DSH_WORKSPACE_ROOT
+          || (process.platform === 'linux'
+            ? '/data/logs/dsh/workspace'
+            : `${ctx.get('profileContext')?.dir || process.cwd()}/workspace`)
+        agentPreset: databuff-chatbi
+
+- id: directory-picker
+  disabled: !!js >-
+    (process.env.DATABUFF_DSH_WORKSPACE_LOCKED || 'true').toLowerCase() !== 'false'
+    && (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'

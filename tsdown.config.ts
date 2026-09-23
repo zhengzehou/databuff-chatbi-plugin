@@ -5,7 +5,7 @@ const ID = '@databuff/dsh-plugin-chatbi'
 export default defineConfig([
   {
     name: ID,
-    entry: { index: 'src/index.ts' },
+    entry: { index: 'src/index.ts', 'workspace-policy': 'src/workspace-policy.ts' },
     outDir: 'lib',
     format: ['esm'],
     platform: 'node',

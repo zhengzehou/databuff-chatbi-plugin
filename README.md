@@ -1,6 +1,12 @@
 # DataBuff ChatBI plugin for DSH
 
-面向 DeepSeek Harness `0.1.1-rc.1` 的 DataBuff/APM 专用 Agent 插件。
+面向 DeepSeek Harness 的 DataBuff/APM 专用 Agent 插件。当前验证支持：
+
+- `0.1.7-alpha.1`
+- `0.1.7-alpha.2`
+
+插件只把完成兼容验证的 DSH 发行版标记为兼容；未来版本需要通过类型检查、测试、
+构建和集成启动验证后再加入 `package.json#dsh.compatibility.dshReleases`。
 
 它提供以下边界：
 
@@ -75,6 +81,42 @@ $env:DATABUFF_MCP_URL='http://127.0.0.1:27403/mcp'
 pnpm dsh web --patch E:/workspace/vscode/dsh/databuff-chatbi-plugin/cordis.patch.yml
 ```
 
+## 锁定模式与运维入口
+
+插件默认以锁定模式运行：新会话固定使用 `databuff-chatbi`，普通用户看不到设置、
+插件管理和会话模式切换入口，服务端也不注册其他 agent preset。
+
+需要维护 DSH 配置时，只能在启动 DSH 的服务端环境中临时设置：
+
+```powershell
+$env:DATABUFF_DSH_ADMIN_MODE = 'true'
+```
+
+然后重启 DSH。维护完成后删除该环境变量并再次重启，即恢复锁定模式：
+
+```powershell
+Remove-Item Env:DATABUFF_DSH_ADMIN_MODE
+```
+
+该开关不会暴露到浏览器配置或 Cookie，避免普通客户端自行解锁。
+
+## 服务端工作区锁定
+
+锁定模式下，插件会在宿主 API 层覆盖客户端提交的 `cwd`、`workspaceId` 和
+`agentPreset`，所有新会话固定使用服务端目录和 `databuff-chatbi`：
+
+```powershell
+$env:DATABUFF_DSH_WORKSPACE_ROOT = 'D:\databuff\dsh-workspaces'
+$env:DATABUFF_DSH_WORKSPACE_LOCKED = 'true'
+```
+
+未配置时，非 Linux 默认使用当前 DSH profile 下的 `workspace` 目录；Linux 默认使用
+`/data/logs/dsh/workspace`。修改变量后必须重启 DSH。管理员模式会临时解除工作区覆盖
+并恢复目录选择器。生产多用户环境应在身份接入后把根目录进一步划分为
+`<tenantId>\<userId>`，避免用户间共享可写目录。插件会尝试递归创建 Linux 默认目录，
+若 DSH 服务用户没有权限，启动/新建会话时会提示具体目录和权限错误；也可以通过
+`DATABUFF_DSH_WORKSPACE_ROOT` 指定其他可写目录。
+
 生产模式示例：
 
 ```powershell
@@ -86,6 +128,12 @@ $env:DATABUFF_MCP_URL='http://ai-apm-web:27403/mcp'
 $env:DATABUFF_MCP_TOKEN='<short-lived-or-service-token>'
 pnpm dsh web --patch E:/workspace/vscode/dsh/databuff-chatbi-plugin/cordis.patch.yml
 ```
+
+Linux/systemd 部署时，`DATABUFF_MCP_URL` 和 `DATABUFF_MCP_TOKEN` 必须配置在
+DSH 服务进程的 `EnvironmentFile` 中；安装插件的 shell 环境不会传递给已运行的服务。
+插件会将 `DATABUFF_MCP_TOKEN` 作为 `Authorization: Bearer ...` 发送给 MCP。
+也可以设置 `DATABUFF_MCP_HOST`、`DATABUFF_MCP_PORT` 和 `DATABUFF_MCP_PATH`，由插件
+拼接 `http://HOST:PORT/PATH`；完整的 `DATABUFF_MCP_URL` 优先级更高。
 
 ## 鉴权说明
 

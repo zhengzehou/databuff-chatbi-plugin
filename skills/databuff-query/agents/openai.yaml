@@ -1,0 +1,4 @@
+interface:
+  display_name: "DataBuff 智能问数"
+  short_description: "查询并分析 DataBuff 服务、指标、日志、链路和业务数据"
+  default_prompt: "使用 $databuff-query 查询指定时间范围的 DataBuff 数据并分析。"

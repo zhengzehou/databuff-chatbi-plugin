@@ -1,0 +1,4 @@
+interface:
+  display_name: "DataBuff 产品答疑"
+  short_description: "解答 DataBuff 产品功能、配置方式与常见使用问题"
+  default_prompt: "使用 $databuff-product-support 解答一个 DataBuff 产品使用问题。"

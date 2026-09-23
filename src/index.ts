@@ -6,11 +6,14 @@ import {
   DEFAULT_ALLOWED_TOOLS,
   isAllowedTool,
 } from './policy'
+import { registerReportTool } from './report'
 
 export const name = '@databuff/dsh-plugin-chatbi'
-export const inject = ['tools', 'webServer']
+export const inject = ['tools', 'webServer', 'sessionTitle']
 
 export interface Config {
+  /** Register only the browser contribution when loaded at profile scope. */
+  presentationOnly?: boolean
   /** MCP namespace configured on @deepseek-ai/dsh-mcp-client. */
   serverName?: string
   /** Raw DataBuff MCP tool names permitted for this agent. */
@@ -40,7 +43,8 @@ interface BrowserConfig {
 
 export function normalizeConfig(config: Config = {}): Required<Config> {
   return {
-    serverName: config.serverName?.trim() || 'databuff',
+    presentationOnly: config.presentationOnly ?? false,
+    serverName: config.serverName?.trim() || 'chatbi-databuff',
     allowedTools: config.allowedTools?.length
       ? [...new Set(config.allowedTools.map(value => value.trim()).filter(Boolean))]
       : [...DEFAULT_ALLOWED_TOOLS],
@@ -53,14 +57,48 @@ export function normalizeConfig(config: Config = {}): Required<Config> {
   }
 }
 
-export function apply(ctx: Context, input: Config = {}): void {
+const MCP_TOOL_WAIT_TIMEOUT_MS = 15_000
+
+async function waitForMcpTools(
+  ctx: Context,
+  allowed: ReadonlySet<string>,
+): Promise<string[]> {
+  const deadline = Date.now() + MCP_TOOL_WAIT_TIMEOUT_MS
+  let visibleTools: string[] = []
+  while (Date.now() < deadline) {
+    visibleTools = ctx.tools.schemas().map(schema => schema.name)
+    if (visibleTools.some(toolName => allowed.has(toolName))) return visibleTools
+    await new Promise<void>(resolve => setTimeout(resolve, 50))
+  }
+  return visibleTools
+}
+
+export async function apply(ctx: Context, input: Config = {}): Promise<void> {
   const config = normalizeConfig(input)
+  if (config.presentationOnly) return
   const allowed = createAllowedToolSet(config.allowedTools, config.serverName)
 
-  // Hide every globally inherited DSH tool (shell, files, web, git, etc.).
-  // The preset mounts its MCP row before this policy row, and DSH keeps scoped
-  // registrations visible when applying a restriction to inherited tools.
-  ctx.tools.restrict({ allow: [] })
+  // This is the only filesystem mutation exposed to ChatBI. It is scoped to
+  // the agent and can write only sanitized HTML below databuff-reports.
+  registerReportTool(ctx)
+
+  // The MCP row is mounted before this policy row. Snapshot the tools visible
+  // in this preset and deny every non-DataBuff entry explicitly. This avoids
+  // DSH's empty allow-mask also hiding sibling scoped MCP registrations.
+  // Preset child entries start concurrently. Wait for the scoped MCP client
+  // to finish discovery before taking the security snapshot.
+  const visibleTools = await waitForMcpTools(ctx, allowed)
+  const configuredTools = visibleTools.filter(toolName => isAllowedTool(toolName, allowed))
+  if (configuredTools.length === 0) {
+    throw new Error(
+      `DataBuff MCP server "${config.serverName}" is not configured, not connected, or exposes no supported tools. `
+      + 'Set DATABUFF_MCP_URL or DATABUFF_MCP_HOST (plus optional port/path) to the reachable '
+      + 'streamable-http endpoint and, when required, set DATABUFF_MCP_TOKEN before starting DSH.',
+    )
+  }
+  const deniedTools = visibleTools
+    .filter(toolName => !isAllowedTool(toolName, allowed))
+  ctx.tools.restrict({ deny: deniedTools })
 
   // Final, monotonic execution guard. Even if another preset row accidentally
   // adds a local tool later, it cannot execute unless explicitly allow-listed.
