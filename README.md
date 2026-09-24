@@ -11,7 +11,7 @@
 它提供以下边界：
 
 - 使用完整 persona，将 Agent 限定为 DataBuff 和 APM 问题；
-- 通过官方 `@deepseek-ai/dsh-mcp-client` 接入 DataBuff `/mcp`；
+- Uses the chatbi-databuff MCP server registered by DSH;
 - 隐藏所有继承的 DSH 全局工具，并通过最终 guard 只允许明确配置的 DataBuff MCP Tool；
 - 浏览器定期验证 DataBuff 登录，未登录或登录失效时跳转 DataBuff 登录页；
 - `DATABUFF_AUTH_REQUIRED=false` 时进入测试模式并显示警告横幅；
@@ -28,7 +28,7 @@ Prompt 不是安全边界。实际约束由 preset 中未装载通用工具、`t
 
 ## 依赖的 DataBuff 后端能力
 
-当前 DataBuff `/mcp` 已实现基础 APM Tool，并已加入下列标准 MCP 能力：
+当前 DataBuff `/webapi/mcp` 已实现基础 APM Tool，并已加入下列标准 MCP 能力：
 
 - `listDataTables`
 - `getTableSchema`
@@ -52,7 +52,7 @@ GET /webapi/api/v1/dsh/auth/status
 - 登录有效：返回任意 `2xx`；
 - 未登录或过期：返回 `401`；
 - 建议支持浏览器 Cookie；跨域部署需允许 credentials 和精确 Origin；
-- `/mcp` 在生产环境必须校验短期用户 Token 或受限服务 Token。
+- `/webapi/mcp` 在生产环境必须校验短期用户 Token 或受限服务 Token。
 
 ## 本地安装
 
@@ -77,10 +77,15 @@ pnpm dsh plugin --profile web add "E:/workspace/vscode/dsh/databuff-chatbi-plugi
 
 ```powershell
 $env:DATABUFF_AUTH_REQUIRED='false'
-$env:DATABUFF_MCP_URL='http://127.0.0.1:27403/mcp'
 pnpm dsh web --patch E:/workspace/vscode/dsh/databuff-chatbi-plugin/cordis.patch.yml
 ```
 
+## DSH MCP configuration
+
+The plugin consumes the MCP server already registered by DSH. Configure one
+streamable-http server with the exact name chatbi-databuff and endpoint
+https://opt.uletm.com/webapi/mcp. Keep any Authorization header in the DSH
+MCP entry. The plugin does not register a URL or token.
 ## 锁定模式与运维入口
 
 插件默认以锁定模式运行：新会话固定使用 `databuff-chatbi`，普通用户看不到设置、
@@ -124,17 +129,10 @@ $env:DATABUFF_AUTH_REQUIRED='true'
 $env:DATABUFF_AUTH_STATUS_URL='/webapi/api/v1/dsh/auth/status'
 $env:DATABUFF_LOGIN_URL='/databuff/login'
 $env:DATABUFF_DSH_REDIRECT_URL='/ai/'
-$env:DATABUFF_MCP_URL='http://ai-apm-web:27403/mcp'
-$env:DATABUFF_MCP_TOKEN='<short-lived-or-service-token>'
 pnpm dsh web --patch E:/workspace/vscode/dsh/databuff-chatbi-plugin/cordis.patch.yml
 ```
 
-Linux/systemd 部署时，`DATABUFF_MCP_URL` 和 `DATABUFF_MCP_TOKEN` 必须配置在
-DSH 服务进程的 `EnvironmentFile` 中；安装插件的 shell 环境不会传递给已运行的服务。
-插件会将 `DATABUFF_MCP_TOKEN` 作为 `Authorization: Bearer ...` 发送给 MCP。
-也可以设置 `DATABUFF_MCP_HOST`、`DATABUFF_MCP_PORT` 和 `DATABUFF_MCP_PATH`，由插件
-拼接 `http://HOST:PORT/PATH`；完整的 `DATABUFF_MCP_URL` 优先级更高。
-
+MCP authorization remains a DSH process-level setting; configure it in the DSH MCP server entry rather than in this plugin.
 ## 鉴权说明
 
 `DATABUFF_AUTH_REQUIRED=false` 只跳过 DSH 页面登录检查。以下限制始终生效：
@@ -145,7 +143,7 @@ DSH 服务进程的 `EnvironmentFile` 中；安装插件的 shell 环境不会�
 - MCP 服务端网络隔离。
 
 当前 DSH 官方 MCP Client 的 HTTP headers 是进程级配置，不是每个浏览器用户动态配置。
-因此，多用户生产部署不能仅靠 `DATABUFF_MCP_TOKEN` 实现逐用户数据授权。推荐部署方式是：
+
 
 1. 网关验证 DataBuff 登录后才放行 DSH 页面；
 2. DSH 使用范围受限的服务 Token 连接 MCP；

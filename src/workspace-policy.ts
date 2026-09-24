@@ -16,8 +16,19 @@ interface SessionControllerLike {
   create(request: Record<string, unknown>): unknown
 }
 
+interface WorkspaceLike {
+  id: string
+  title?: string
+}
+
 interface WorkspaceRegistryLike {
-  create(path: string): Promise<{ id: string }>
+  create(path: string, title?: string): Promise<WorkspaceLike>
+}
+
+interface BrowserWorkspaceConfig {
+  locked: boolean
+  workspaceId?: string
+  label?: string
 }
 
 export function resolveWorkspaceRoot(
@@ -32,8 +43,10 @@ export function resolveWorkspaceRoot(
 
 export async function apply(ctx: Context, input: Config = {}): Promise<void> {
   const locked = input.locked !== false
+  const browserConfig: BrowserWorkspaceConfig = { locked }
   ctx.effect(() => ctx.webServer.tapIndex((html) => {
-    const script = `<script>window.__DATABUFF_WORKSPACE_LOCKED__=${JSON.stringify(locked)}</script>`
+    const json = JSON.stringify(browserConfig).replaceAll('<', '\\u003c')
+    const script = `<script>window.__DATABUFF_WORKSPACE_CONFIG__=${json};window.__DATABUFF_WORKSPACE_LOCKED__=${JSON.stringify(locked)}</script>`
     const index = html.indexOf('<head>')
     return index === -1 ? `${script}${html}` : `${html.slice(0, index + 6)}${script}${html.slice(index + 6)}`
   }), 'databuff-chatbi.workspace-browser-config')
@@ -54,7 +67,9 @@ export async function apply(ctx: Context, input: Config = {}): Promise<void> {
     )
   }
   const registry = ctx.get('workspaceRegistry') as unknown as WorkspaceRegistryLike
-  const fixedWorkspace = await registry.create(workspaceRoot)
+  const fixedWorkspace = await registry.create(workspaceRoot, 'DataBuff 默认工作区')
+  browserConfig.workspaceId = fixedWorkspace.id
+  browserConfig.label = fixedWorkspace.title?.trim() || 'DataBuff 默认工作区'
   const agentPreset = input.agentPreset?.trim() || 'databuff-chatbi'
   const controller = ctx.get('sessionController') as unknown as SessionControllerLike
   const original = controller.create

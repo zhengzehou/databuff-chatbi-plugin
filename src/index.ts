@@ -14,7 +14,7 @@ export const inject = ['tools', 'webServer', 'sessionTitle']
 export interface Config {
   /** Register only the browser contribution when loaded at profile scope. */
   presentationOnly?: boolean
-  /** MCP namespace configured on @deepseek-ai/dsh-mcp-client. */
+  /** MCP namespace configured by the DSH profile MCP settings. */
   serverName?: string
   /** Raw DataBuff MCP tool names permitted for this agent. */
   allowedTools?: string[]
@@ -82,18 +82,17 @@ export async function apply(ctx: Context, input: Config = {}): Promise<void> {
   // the agent and can write only sanitized HTML below databuff-reports.
   registerReportTool(ctx)
 
-  // The MCP row is mounted before this policy row. Snapshot the tools visible
-  // in this preset and deny every non-DataBuff entry explicitly. This avoids
-  // DSH's empty allow-mask also hiding sibling scoped MCP registrations.
-  // Preset child entries start concurrently. Wait for the scoped MCP client
-  // to finish discovery before taking the security snapshot.
+  // The DSH profile owns the MCP connection. Snapshot the inherited tools
+  // visible in this preset and deny every non-DataBuff entry explicitly.
+  // Preset child entries may start concurrently, so wait for MCP discovery
+  // to finish before taking the security snapshot.
   const visibleTools = await waitForMcpTools(ctx, allowed)
   const configuredTools = visibleTools.filter(toolName => isAllowedTool(toolName, allowed))
   if (configuredTools.length === 0) {
     throw new Error(
-      `DataBuff MCP server "${config.serverName}" is not configured, not connected, or exposes no supported tools. `
-      + 'Set DATABUFF_MCP_URL or DATABUFF_MCP_HOST (plus optional port/path) to the reachable '
-      + 'streamable-http endpoint and, when required, set DATABUFF_MCP_TOKEN before starting DSH.',
+      `DataBuff MCP server "${config.serverName}" is not available in the DSH MCP settings, `
+      + 'is not connected, or exposes no supported tools. Configure a streamable-http MCP server '
+      + `named "${config.serverName}" in DSH before starting this preset.`,
     )
   }
   const deniedTools = visibleTools

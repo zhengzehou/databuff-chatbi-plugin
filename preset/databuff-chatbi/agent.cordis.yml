@@ -95,38 +95,9 @@
 - id: databuff-tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
 
-# The preset is mounted in an isolated Agent scope. Register the DataBuff MCP
-# bridge here so its tools are visible to the ChatBI policy in that same scope.
-- id: mcp-chatbi-databuff
-  name: '@deepseek-ai/dsh-mcp-client'
-  config:
-    serverName: chatbi-databuff
-    transport: streamable-http
-    url: !!js >-
-      (() => {
-        const explicitUrl = process.env.DATABUFF_MCP_URL?.trim()
-        if (explicitUrl) return explicitUrl
-        const host = process.env.DATABUFF_MCP_HOST?.trim()
-        if (!host) return 'http://127.0.0.1:27403/mcp'
-        const path = process.env.DATABUFF_MCP_PATH?.trim() || '/mcp'
-        const normalizedPath = path.startsWith('/') ? path : `/${path}`
-        if (/^https?:\/\//i.test(host)) {
-          const normalizedHost = host.replace(/\/+$/, '')
-          return normalizedHost.endsWith(normalizedPath)
-            ? normalizedHost
-            : `${normalizedHost}${normalizedPath}`
-        }
-        const port = process.env.DATABUFF_MCP_PORT?.trim() || '27403'
-        return `http://${host}:${port}${normalizedPath}`
-      })()
-    headers: !!js >-
-      process.env.DATABUFF_MCP_AUTHORIZATION
-      ? { Authorization: process.env.DATABUFF_MCP_AUTHORIZATION }
-      : process.env.DATABUFF_MCP_TOKEN
-        ? { Authorization: `Bearer ${process.env.DATABUFF_MCP_TOKEN}` }
-        : {}
-    failOnStartupError: true
-
+# The DSH profile must provide the streamable-http MCP server named
+# `chatbi-databuff`. This preset intentionally consumes that inherited DSH
+# MCP registration and does not own a URL, token, or transport configuration.
 - id: databuff-policy
   name: '@databuff/dsh-plugin-chatbi'
   config:

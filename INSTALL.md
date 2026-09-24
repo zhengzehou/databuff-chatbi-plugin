@@ -4,104 +4,73 @@ This package is a DSH bundle for the DataBuff/APM ChatBI agent.
 
 ## Requirements
 
-- DSH `0.1.7-alpha.1` or `0.1.7-alpha.2`
-- A reachable DataBuff MCP endpoint
+- DSH 0.1.7-alpha.1 or 0.1.7-alpha.2
+- DSH MCP settings containing a streamable-http server named chatbi-databuff
 - Node.js supported by the installed DSH release
 
 ## Install from the shared tarball
 
-Use an absolute path to the `.tgz` file. The profile manager installs the
-bundle into the selected profile and automatically activates its `dsh.bundle`
-patch; no manual editing of `cordis.patch.yml` is needed.
+The plugin consumes MCP tools already registered by DSH. It does not own the
+MCP URL, transport, or token. Install it into the profile that runs DSH:
 
 ```powershell
-$env:DATABUFF_MCP_URL = 'http://127.0.0.1:27403/mcp'
 $env:DATABUFF_DSH_WORKSPACE_ROOT = 'D:\databuff\dsh-workspace'
 
-dsh plugin --profile web add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.3.tgz'
+dsh plugin --profile web add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.6.tgz'
 ```
 
-Replace `web` with the profile that runs your DSH service if it is different.
+Replace web with the profile that runs your DSH service if it is different.
 Restart that service after installation. For a Tauri profile, use:
 
 ```powershell
-dsh plugin --profile tauri add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.3.tgz'
+dsh plugin --profile tauri add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.6.tgz'
 ```
 
-The package resolves its preset and bundled skills from the installed profile,
-so the installation directory may differ on every machine.
-
-For a Linux shell, the equivalent installation is:
+For Linux:
 
 ```sh
-export DATABUFF_MCP_URL='http://127.0.0.1:27403/mcp'
-export DATABUFF_MCP_TOKEN='replace-with-a-scoped-service-token'
 export DATABUFF_DSH_WORKSPACE_ROOT='/data/logs/dsh/workspace'
-dsh plugin --profile web add '/opt/packages/databuff-dsh-plugin-chatbi-0.1.3.tgz'
+dsh plugin --profile web add '/opt/packages/databuff-dsh-plugin-chatbi-0.1.6.tgz'
 ```
 
-The `export` values above only affect commands started from that shell. A
-systemd-managed DSH process must receive the same values through its unit's
-`EnvironmentFile`.
+The workspace variable is independent of MCP and is optional when the default
+Linux workspace path is acceptable.
 
-## MCP and authentication
+## DSH MCP settings
 
-Set `DATABUFF_MCP_URL` before starting DSH when the MCP server is not on the
-local default address. You can provide the endpoint either as a complete URL
-or as host settings:
-
-```sh
-# Preferred when the endpoint has a non-default path or scheme:
-export DATABUFF_MCP_URL='http://databuff:27403/webapi/mcp'
-
-# Or let the plugin construct http://HOST:PORT/PATH:
-export DATABUFF_MCP_HOST='databuff'
-export DATABUFF_MCP_PORT='27403'
-export DATABUFF_MCP_PATH='/webapi/mcp'
-```
-
-`DATABUFF_MCP_URL` takes precedence over `DATABUFF_MCP_HOST`. `DATABUFF_MCP_HOST`
-may be a plain hostname/IP or an `http(s)://` base URL; the default `/webapi/mcp` path
-is appended when needed. If the MCP endpoint requires a service token, set
-`DATABUFF_MCP_TOKEN`; the plugin sends it as `Authorization: Bearer ...`.
-For a preformatted header, use `DATABUFF_MCP_AUTHORIZATION` instead.
-
-On Linux, these variables must be present in the DSH service process. For a
-systemd deployment, put them in an environment file referenced by the DSH
-unit, for example `/etc/dsh/databuff.env`:
-
-```ini
-DATABUFF_MCP_HOST=databuff
-DATABUFF_MCP_PORT=27403
-DATABUFF_MCP_PATH=/mcp
-DATABUFF_MCP_TOKEN=replace-with-a-scoped-service-token
-DATABUFF_DSH_WORKSPACE_ROOT=/data/logs/dsh/workspace
-```
-
-Then restart the service. If DSH and DataBuff run in different containers,
-do not use `127.0.0.1`; use the DataBuff service DNS name or host address.
-The plugin creates `/data/logs/dsh/workspace` automatically when the service
-user has permission. Otherwise create it and grant ownership before startup,
-for example `sudo mkdir -p /data/logs/dsh/workspace` followed by `sudo chown`.
-
-For a container deployment, pass the same values in the container environment,
-for example in Docker Compose:
+Configure the MCP server once in the DSH profile MCP settings or patch. The
+server name must exactly be chatbi-databuff:
 
 ```yaml
-environment:
-  DATABUFF_MCP_HOST: databuff
-  DATABUFF_MCP_PORT: "27403"
-  DATABUFF_MCP_PATH: /webapi/mcp
-  DATABUFF_DSH_WORKSPACE_ROOT: /data/logs/dsh/workspace
+- id: mcp-chatbi-databuff
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: chatbi-databuff
+    transport: streamable-http
+    url: https://opt.uletm.com/webapi/mcp
+    headers:
+      Authorization: Bearer <token-if-required>
 ```
 
-In production, set `DATABUFF_AUTH_REQUIRED=true` and configure
-`DATABUFF_AUTH_STATUS_URL`, `DATABUFF_LOGIN_URL`, and
-`DATABUFF_DSH_REDIRECT_URL` for the DataBuff deployment.
+Do not set DATABUFF_MCP_URL, DATABUFF_MCP_HOST, DATABUFF_MCP_PATH, or
+DATABUFF_MCP_TOKEN for this plugin. If an old value remains in the DSH service
+environment, remove it so it cannot create a second or conflicting connection.
 
-`DATABUFF_AUTH_REQUIRED=false` is intended only for local testing.
+The plugin only checks that DSH exposes the configured server's allowed tools.
+If the server is missing, disconnected, or exposes no supported tools, session
+creation will fail with the server name shown in the error.
+
+## Workspace and authentication
+
+The plugin creates /data/logs/dsh/workspace automatically when the service
+user has permission. Otherwise create it and grant ownership before startup.
+
+In production, set DATABUFF_AUTH_REQUIRED=true and configure
+DATABUFF_AUTH_STATUS_URL, DATABUFF_LOGIN_URL, and DATABUFF_DSH_REDIRECT_URL
+for the DataBuff deployment. DATABUFF_AUTH_REQUIRED=false is intended only
+for local testing.
 
 ## Verify
 
-After restart, `databuff-chatbi` should be the default agent preset. Create a
+After restart, databuff-chatbi should be the default agent preset. Create a
 new session and verify that the DataBuff MCP tools are available.
