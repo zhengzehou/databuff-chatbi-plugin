@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createAllowedToolSet,
   isAllowedTool,
@@ -33,6 +33,14 @@ describe('DataBuff tool policy', () => {
     expect(config.allowedTools).toEqual(['queryMetricData'])
     expect(config.authCheckIntervalMs).toBe(10_000)
     expect(config.authRequired).toBe(true)
+  })
+
+  it('keeps the administration surfaces visible unless the switch is set', () => {
+    vi.stubEnv('DATABUFF_DSH_UI_LOCKED', '')
+    expect(normalizeConfig({}).uiLocked).toBe(false)
+    vi.stubEnv('DATABUFF_DSH_UI_LOCKED', 'true')
+    expect(normalizeConfig({}).uiLocked).toBe(true)
+    vi.unstubAllEnvs()
   })
 
   it('builds an encoded login redirect', () => {

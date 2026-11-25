@@ -1,45 +1,77 @@
 # Install the plugin package into the web profile first, then start with:
 # dsh web --patch <plugin-root>/cordis.patch.yml
 #
-# Locked appliance mode is the default. Only the server-side environment
-# variable DATABUFF_DSH_ADMIN_MODE=true restores DSH administration surfaces
-# and the shipped preset roster. This switch is intentionally not exposed in
-# the browser UI.
+# Locked appliance mode is the default: sessions are pinned to the shipped
+# preset roster. The Settings and Plugins surfaces stay visible and can be
+# hidden with DATABUFF_DSH_UI_LOCKED=true; the remaining administration
+# surfaces (preset switching, directory picker) require
+# DATABUFF_DSH_ADMIN_MODE=true. These switches are intentionally not exposed
+# in the browser UI.
+# The default preset is a whole-profile setting, and `agent-preset-registry` is
+# NOT a row this bundle inserts: a plugin toggle-off only disables the rows the
+# bundle owns (the `insert:` list below), so a hard-coded `databuff-chatbi` here
+# keeps applying after the plugin is switched off. The preset then no longer
+# exists while remaining the default, and every new session dies with
+# `agent-preset/not-found: Unknown agent preset: databuff-chatbi`.
+# Derive it from the launch facts instead: read the profile patch layer (where
+# the off switch writes `disabled: true`) plus the composed bundle stack, and
+# fall back to the shipping web default while this plugin is off.
 - id: agent-preset-registry
   config:
-    default: databuff-chatbi
+    default: !!js >-
+      (() => {
+        const pc = ctx.get('profileContext') || {};
+        const bundles = pc.startedBundles || [];
+        const shipping = bundles.indexOf('@deepseek-ai/dsh-web-app') >= 0 ? 'standard' : 'databuff-chatbi';
+        if (bundles.indexOf('@databuff/dsh-plugin-chatbi') < 0) return shipping;
+        try {
+          const rows = ['preset-databuff-chatbi', 'databuff-chatbi'];
+          const idLine = /^- id:[ \t]*['"]?([^'"]*?)['"]?[ \t]*$/;
+          const offLine = /^[ \t]+disabled:[ \t]*true[ \t]*$/;
+          const onLine = /^[ \t]+disabled:[ \t]*false[ \t]*$/;
+          const lines = String(process.getBuiltinModule('node:fs').readFileSync(pc.patchPath, 'utf8')).split(/\r?\n/);
+          const seen = {};
+          for (let i = 0; i < lines.length; i++) {
+            const hit = idLine.exec(lines[i]);
+            if (hit === null || rows.indexOf(hit[1]) < 0) continue;
+            const next = lines[i + 1] || '';
+            if (offLine.test(next)) seen[hit[1]] = true;
+            else if (onLine.test(next)) seen[hit[1]] = false;
+          }
+          for (const id of rows) if (seen[id] === true) return shipping;
+        } catch (error) {}
+        return 'databuff-chatbi';
+      })()
 
-# Remove all ordinary administration and preset-switching entrances while
-# locked. Host-side managers are disabled too, so hiding UI is not the only
-# boundary. Restart DSH after changing DATABUFF_DSH_ADMIN_MODE.
+# The Plugins page and the Settings surface stay visible so an operator can
+# inspect and manage this profile; the market entry lives on the Plugins page.
+# They are on by default and can be hidden again with
+# DATABUFF_DSH_UI_LOCKED=true. Host-side managers honour the same switch, so
+# hiding the UI is not the only boundary. Restart DSH after changing it.
 - id: plugin-manager
   disabled: !!js >-
-    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+    (process.env.DATABUFF_DSH_UI_LOCKED || 'false').toLowerCase() === 'true'
 
 - id: ui-plugin-manager
   disabled: !!js >-
-    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+    (process.env.DATABUFF_DSH_UI_LOCKED || 'false').toLowerCase() === 'true'
 
 - id: ui-settings-general
   disabled: !!js >-
-    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+    (process.env.DATABUFF_DSH_UI_LOCKED || 'false').toLowerCase() === 'true'
 
 - id: ui-settings-plugins
   disabled: !!js >-
-    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+    (process.env.DATABUFF_DSH_UI_LOCKED || 'false').toLowerCase() === 'true'
 
 - id: ui-settings-plugin-inventory
   disabled: !!js >-
-    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+    (process.env.DATABUFF_DSH_UI_LOCKED || 'false').toLowerCase() === 'true'
 
+# The agent-preset row switches the default preset for later sessions. It stays
+# bound to DATABUFF_DSH_ADMIN_MODE: the preset is part of the locked appliance
+# contract rather than an administration surface.
 - id: ui-agent-preset
-  disabled: !!js >-
-    (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
-
-# The desktop pet plugin patches a button beside the settings trigger. Disable
-# the feature at its loader entry in locked mode; the client guard also removes
-# any stale DOM left by an earlier mount.
-- id: dsh-tauri-pet
   disabled: !!js >-
     (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
 
@@ -58,8 +90,14 @@
         description: DataBuff/APM 查询、巡检、诊断、定位、报告与预测
         order: 0
         plugins:
-          - id: databuff-chatbi-composition
-            name: '@deepseek-ai/cordis-plugin-include'
+          # No `id` on purpose. A plugin toggle-off collects every id under a
+          # bundle's `insert:` block — nested ones included — and writes each as
+          # a top-level `- id: …` + `disabled: true` row in the profile patch.
+          # Nothing nested here is a top-level entry, so that row can never match
+          # and DSH reports it on every boot:
+          #   patch: entry "databuff-chatbi-composition" not found
+          # The row's `name` is what composes it; the id only bought a warning.
+          - name: '@deepseek-ai/cordis-plugin-include'
             config:
               # The package is installed under the active profile's
               # node_modules, so this remains portable across machines.

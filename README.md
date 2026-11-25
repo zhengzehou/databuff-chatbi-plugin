@@ -4,6 +4,7 @@
 
 - `0.1.7-alpha.1`
 - `0.1.7-alpha.2`
+- `0.2.1-alpha.2`
 
 插件只把完成兼容验证的 DSH 发行版标记为兼容；未来版本需要通过类型检查、测试、
 构建和集成启动验证后再加入 `package.json#dsh.compatibility.dshReleases`。
@@ -88,22 +89,42 @@ https://opt.uletm.com/webapi/mcp. Keep any Authorization header in the DSH
 MCP entry. The plugin does not register a URL or token.
 ## 锁定模式与运维入口
 
-插件默认以锁定模式运行：新会话固定使用 `databuff-chatbi`，普通用户看不到设置、
-插件管理和会话模式切换入口，服务端也不注册其他 agent preset。
+插件默认以锁定模式运行：新会话固定使用 `databuff-chatbi`，服务端也不注册其他
+agent preset。**设置入口与插件管理（市场）入口默认可见**，便于运维在本机检查
+和调整 profile。该开关同时作用于 DSH 加载器条目和浏览器端的入口守卫，两者不会
+各自为政。
 
-需要维护 DSH 配置时，只能在启动 DSH 的服务端环境中临时设置：
+默认 agent preset 由插件按启动事实推导，而不是写死：读取 profile 补丁层
+（`<profile>/cordis.patch.yml`，插件开关把 `disabled: true` 写在这里）与 bundle
+栈，插件启用时用 `databuff-chatbi`，插件被关闭时回落到 DSH 自带的 `standard`。
+这样即使有人在插件市场或设置页把本插件关掉，新建会话也不会因为默认 preset 指向
+一个已不存在的 preset 而报 `agent-preset/not-found`。
+
+需要隐藏设置与插件入口时，在启动 DSH 的服务端环境中设置：
+
+```powershell
+$env:DATABUFF_DSH_UI_LOCKED = 'true'
+```
+
+然后重启 DSH。删除该环境变量并再次重启，即恢复可见：
+
+```powershell
+Remove-Item Env:DATABUFF_DSH_UI_LOCKED
+```
+
+Agent preset 切换（`ui-agent-preset`）仍属于锁定契约，只能用管理面开关临时解锁：
 
 ```powershell
 $env:DATABUFF_DSH_ADMIN_MODE = 'true'
 ```
 
-然后重启 DSH。维护完成后删除该环境变量并再次重启，即恢复锁定模式：
+维护完成后删除该环境变量并再次重启，即恢复锁定：
 
 ```powershell
 Remove-Item Env:DATABUFF_DSH_ADMIN_MODE
 ```
 
-该开关不会暴露到浏览器配置或 Cookie，避免普通客户端自行解锁。
+这些开关都不会暴露到浏览器配置或 Cookie，避免普通客户端自行解锁。
 
 ## 服务端工作区锁定
 
@@ -133,6 +154,27 @@ pnpm dsh web --patch E:/workspace/vscode/dsh/databuff-chatbi-plugin/cordis.patch
 ```
 
 MCP authorization remains a DSH process-level setting; configure it in the DSH MCP server entry rather than in this plugin.
+## 角色指令与上下文注入
+
+新会话页面的角色条（智能问数 / 智能巡检 / 产品答疑 / 运维专家）决定本轮要
+加载的 Skill。选定角色后，浏览器在提交消息前把角色上报给 DSH 宿主：
+
+- `POST /dsh-chatbi-role`，请求体 `{"sessionId": "<session id>", "role": "<role key>"}`；
+  该端点在 profile 作用域注册，只接受 POST，请求体超过 2 KB 时忽略。
+
+宿主在每轮的第一个 step 通过 DSH 的上下文注入通道（`agent/pre-step`）写入一条
+`user/message`，其 `source.kind` 为 `databuff-role`、`form` 为 `notice`。模型能读到
+角色指令，浏览器把它渲染为一条可折叠的 context 行，**不会**出现在用户消息气泡里，
+也不会进入用户自己输入的文字。
+
+部署注意：
+
+- 反向代理必须把 `/dsh-chatbi-role` 转发给 DSH Web 服务，否则浏览器上报失败。
+  该路径刻意放在 `/webapi/*`、`/databuff/*` 之外，避免与 DataBuff 后端命名空间冲突。
+- 上报失败时角色退回默认值 `query`（智能问数），对话本身不受影响。
+- 只有通过 `cordis.patch.yml` 启动（同时加载 profile 作用域与 preset 作用域的插件行）
+  时角色注入才完整；缺少 profile 作用域那一行时，端点不存在，行为同上降级。
+
 ## 鉴权说明
 
 `DATABUFF_AUTH_REQUIRED=false` 只跳过 DSH 页面登录检查。以下限制始终生效：

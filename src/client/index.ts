@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { safeLoginUrl } from '../policy'
-import { mountDataBuffHero, withSelectedRolePrompt } from './hero'
+import { CHATBI_ROLE_SYNC_PATH } from '../roles'
+import { getSelectedRole, mountDataBuffHero } from './hero'
 
 export const name = '@databuff/dsh-plugin-chatbi'
 export const inject = ['conversation', 'layout', 'sessions', 'workspaces', 'uiWorkspace']
@@ -92,14 +93,43 @@ function isChatBiMode(sessions: SessionsStateLike | undefined): boolean {
     && isChatBi(session)
   ))
 }
-/** Inject the selected ChatBI role after the composer has captured the draft. */
-function installRolePromptTransport(ctx: Context): () => void {
+/** Read the host identity a submission targets, or '' when the face lacks one. */
+function sessionIdOf(session: unknown): string {
+  const candidate = (session as { sessionId?: unknown } | undefined)?.sessionId
+  return typeof candidate === 'string' ? candidate : ''
+}
+
+/**
+ * Report the hero's selected role to the host before the prompt is admitted.
+ *
+ * The host injects that role as turn context, so the submitted text stays
+ * exactly what the user typed. Awaiting the report keeps the role and the
+ * prompt in the same order; a lost report degrades to the host's default role.
+ */
+async function publishSelectedRole(session: unknown): Promise<void> {
+  const sessionId = sessionIdOf(session)
+  if (!sessionId) return
+  try {
+    await fetch(CHATBI_ROLE_SYNC_PATH, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ sessionId, role: getSelectedRole() }),
+    })
+  } catch {
+    /* Offline or blocked: the host keeps its previous or default role. */
+  }
+}
+
+/** Keep the host's per-session role aligned with the hero selection. */
+function installRoleSync(ctx: Context): () => void {
   const conversation = ctx.get?.('conversation') as ConversationTransport | undefined
   if (!conversation || typeof conversation.sendSession !== 'function') return () => {}
 
   const original = conversation.sendSession
-  const wrapped: SendSession = function (this: ConversationTransport, session, text, attachmentIds, mode, signal) {
-    return original.call(this, session, withSelectedRolePrompt(text), attachmentIds, mode, signal)
+  const wrapped: SendSession = async function (this: ConversationTransport, session, text, attachmentIds, mode, signal) {
+    await publishSelectedRole(session)
+    return original.call(this, session, text, attachmentIds, mode, signal)
   }
   conversation.sendSession = wrapped
   return () => {
@@ -121,6 +151,7 @@ declare global {
     __DATABUFF_CHATBI_CONFIG__?: BrowserConfig
     __DATABUFF_WORKSPACE_LOCKED__?: boolean
     __DATABUFF_WORKSPACE_CONFIG__?: LockedWorkspaceConfig
+    __DATABUFF_UI_LOCKED__?: boolean
   }
 }
 
@@ -186,6 +217,10 @@ function startLockedWorkspace(ctx: Context): () => void {
 
 /** Hide administrative surfaces while the active session runs ChatBI. */
 function lockSettingsAndPetEntrances(ctx: Context): () => void {
+  // The Settings and Plugins entrances stay available unless the deployment
+  // opted into the locked surface with DATABUFF_DSH_UI_LOCKED, the same switch
+  // that disables the matching loader entries in cordis.patch.yml.
+  if (window.__DATABUFF_UI_LOCKED__ !== true) return () => {}
   const style = document.createElement('style')
   style.id = 'databuff-chatbi-admin-surface-lock-style'
   style.textContent = `
@@ -266,10 +301,10 @@ function watchChatBiModeEffects(ctx: Context): () => void {
       disposeModeEffects = () => {}
       return
     }
-    const disposeRolePrompt = installRolePromptTransport(ctx)
+    const disposeRoleSync = installRoleSync(ctx)
     const disposeHero = mountDataBuffHero()
     disposeModeEffects = () => {
-      disposeRolePrompt()
+      disposeRoleSync()
       disposeHero()
     }
   }

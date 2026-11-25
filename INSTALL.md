@@ -4,7 +4,7 @@ This package is a DSH bundle for the DataBuff/APM ChatBI agent.
 
 ## Requirements
 
-- DSH 0.1.7-alpha.1 or 0.1.7-alpha.2
+- DSH 0.1.7-alpha.1, 0.1.7-alpha.2, or 0.2.1-alpha.2
 - DSH MCP settings containing a streamable-http server named chatbi-databuff
 - Node.js supported by the installed DSH release
 
@@ -74,3 +74,12 @@ for local testing.
 
 After restart, databuff-chatbi should be the default agent preset. Create a
 new session and verify that the DataBuff MCP tools are available.
+
+## Role selection
+
+The hero role bar (智能问数 / 智能巡检 / 产品答疑 / 运维专家) reports the
+selected role to `POST /dsh-chatbi-role` before each prompt. The host turns it
+into injected turn context, so the directive never appears in the user's own
+message bubble. The reverse proxy in front of DSH must forward that path to the
+DSH web server; when it does not, the role falls back to `query` and chat still
+works.
