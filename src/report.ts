@@ -3,12 +3,57 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { createReadStream } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
-import { basename, join, resolve } from 'node:path'
+import { basename, isAbsolute, join, resolve } from 'node:path'
 
 export const REPORT_TOOL_NAME = 'saveChatbiHtmlReport'
 export const MAX_REPORT_BYTES = 2 * 1024 * 1024
+const REPORT_ROUTE = '/databuff-chatbi/reports'
 
 const CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+export interface ReportToolOptions {
+  directory?: string
+  publicBaseUrl?: string
+}
+
+export function resolveReportDirectory(workspaceDirectory: string, configuredDirectory?: string): string {
+  const configured = configuredDirectory?.trim()
+  if (!configured) return resolve(workspaceDirectory, 'databuff-reports')
+  return isAbsolute(configured)
+    ? resolve(configured)
+    : resolve(workspaceDirectory, configured)
+}
+
+export function normalizeReportPublicBaseUrl(input?: string): string {
+  const value = input?.trim()
+  if (!value) return ''
+
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error('reportPublicBaseUrl must be an absolute HTTP(S) URL')
+  }
+  if (!['http:', 'https:'].includes(url.protocol)
+    || url.username
+    || url.password
+    || url.search
+    || url.hash) {
+    throw new Error('reportPublicBaseUrl must be an HTTP(S) base URL without credentials, query, or fragment')
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+}
+
+export function buildReportUrl(publicBaseUrl: string, route: string): string {
+  return publicBaseUrl ? `${publicBaseUrl}${route}` : route
+}
+
+export function reportContentDisposition(disposition: 'inline' | 'attachment', fileName: string): string {
+  const fallback = fileName.replace(/[^\x20-\x7E]|["\\]/g, '_')
+  const encoded = encodeURIComponent(fileName)
+    .replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encoded}`
+}
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z').replace('T', '-')
@@ -96,11 +141,12 @@ export function buildReportSessionTitle(
   return `${reportDate(now)} ${withoutDate}`.slice(0, 80)
 }
 
-export function registerReportTool(ctx: Context): void {
+export function registerReportTool(ctx: Context, options: ReportToolOptions = {}): void {
   const reports = new Map<string, string>()
+  const publicBaseUrl = normalizeReportPublicBaseUrl(options.publicBaseUrl)
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
-    path: '/databuff-chatbi/reports',
+    path: REPORT_ROUTE,
     handler(req, res) {
       if (req.method !== 'GET') {
         res.writeHead(405, { Allow: 'GET' })
@@ -109,7 +155,7 @@ export function registerReportTool(ctx: Context): void {
       }
       const requestUrl = new URL(req.url ?? '/', 'http://localhost')
       const pathname = requestUrl.pathname
-      const token = pathname.slice('/databuff-chatbi/reports/'.length)
+      const token = pathname.slice(`${REPORT_ROUTE}/`.length)
       const reportPath = /^[A-Za-z0-9_-]{32}$/.test(token) ? reports.get(token) : undefined
       if (!reportPath) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
@@ -123,7 +169,7 @@ export function registerReportTool(ctx: Context): void {
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer',
         'Cache-Control': 'private, no-store',
-        'Content-Disposition': `${disposition}; filename="${basename(reportPath).replace(/["\\]/g, '_')}"`,
+        'Content-Disposition': reportContentDisposition(disposition, basename(reportPath)),
       })
       const stream = createReadStream(reportPath)
       stream.on('error', () => {
@@ -136,7 +182,7 @@ export function registerReportTool(ctx: Context): void {
 
   ctx.tools.register(defineTool({
     name: REPORT_TOOL_NAME,
-    description: 'Save a sanitized standalone DataBuff/APM HTML report under the current workspace databuff-reports directory for repeated viewing.',
+    description: 'Save a sanitized standalone DataBuff/APM HTML report under the configured report directory (default: current workspace/databuff-reports) for repeated viewing.',
     parameters: {
       html: { type: 'string', required: true, description: 'Complete standalone HTML report content.' },
       fileName: { type: 'string', description: 'Optional plain .html file name. Directories are not allowed.' },
@@ -179,7 +225,7 @@ export function registerReportTool(ctx: Context): void {
       if (exec.signal.aborted) throw exec.signal.reason
 
       const fileName = normalizeReportFileName(args.fileName)
-      const reportDir = resolve(cwd, 'databuff-reports')
+      const reportDir = resolveReportDirectory(cwd, options.directory)
       const reportPath = join(reportDir, fileName)
       const html = sanitizeReportHtml(args.html)
       const bytes = Buffer.byteLength(html, 'utf8')
@@ -193,7 +239,7 @@ export function registerReportTool(ctx: Context): void {
       })
       const token = randomBytes(24).toString('base64url')
       reports.set(token, reportPath)
-      const previewUrl = `/databuff-chatbi/reports/${token}`
+      const previewUrl = buildReportUrl(publicBaseUrl, `${REPORT_ROUTE}/${token}`)
       const downloadUrl = `${previewUrl}?download=1`
       const shareUrl = previewUrl
       const sessionTitle = buildReportSessionTitle(fileName, html, args.reportTitle)

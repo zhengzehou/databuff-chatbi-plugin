@@ -107,3 +107,5 @@
     loginUrl: !!js 'process.env.DATABUFF_LOGIN_URL || "/databuff/login"'
     redirectUrl: !!js 'process.env.DATABUFF_DSH_REDIRECT_URL || ""'
     showTestModeBanner: true
+    reportDirectory: !!js 'process.env.DATABUFF_DSH_REPORT_DIR || ""'
+    reportPublicBaseUrl: !!js 'process.env.DATABUFF_DSH_REPORT_PUBLIC_BASE_URL || "https://opt.beta.uletm.com/dsh"'

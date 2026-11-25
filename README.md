@@ -151,6 +151,26 @@ $env:DATABUFF_DSH_HIDE_ADD_WORKSPACE = 'true'
 若 DSH 服务用户没有权限，启动/新建会话时会提示具体目录和权限错误；也可以通过
 `DATABUFF_DSH_WORKSPACE_ROOT` 指定其他可写目录。
 
+## 报告保存与浏览器下载
+
+当前会话生成并保存的文件是经过清理的独立 HTML 报告。默认保存到当前会话工作区的
+`databuff-reports` 子目录；可在 DSH 服务进程环境中设置：
+
+```powershell
+$env:DATABUFF_DSH_REPORT_DIR = 'D:\databuff\reports'
+$env:DATABUFF_DSH_REPORT_PUBLIC_BASE_URL = 'https://opt.beta.uletm.com/dsh'
+```
+
+`DATABUFF_DSH_REPORT_DIR` 支持绝对目录；相对目录以当前会话工作区为基准。DSH 服务用户
+必须有该目录的写入权限。报告工具会在会话回复中返回“直接打开”和“下载 HTML 文件”链接；
+下载请求返回附件响应，并支持中文文件名。
+
+通过反向代理访问 DSH 时，必须将 `/databuff-chatbi/reports/` 转发到 DSH Web 服务并保留
+查询参数；若公开地址包含路径前缀，代理需在转发时去掉此前缀。`DATABUFF_DSH_REPORT_PUBLIC_BASE_URL`
+默认为 `https://opt.beta.uletm.com/dsh`，是浏览器可访问的 DSH 公共基址。部署地址不同则覆盖此值。
+
+配置环境变量后重启 DSH。插件不会开放任意文件系统写入；此功能只保存并下载插件生成的 HTML 报告。
+
 生产模式示例：
 
 ```powershell

@@ -53,6 +53,10 @@ export interface Config {
   authCheckIntervalMs?: number
   /** Visible warning when authentication is intentionally disabled. */
   showTestModeBanner?: boolean
+  /** Absolute path, or a path relative to the session workspace, for HTML reports. */
+  reportDirectory?: string
+  /** Browser-visible HTTP(S) base URL, optionally including a reverse-proxy path prefix. */
+  reportPublicBaseUrl?: string
   /**
    * Hide the DSH administration surfaces (Settings, Plugins) in the browser.
    * Defaults to DATABUFF_DSH_UI_LOCKED, the same switch the profile patch uses,
@@ -88,6 +92,8 @@ export function normalizeConfig(config: Config = {}): Required<Config> {
     redirectUrl: config.redirectUrl?.trim() || '',
     authCheckIntervalMs: Math.max(10_000, config.authCheckIntervalMs ?? 60_000),
     showTestModeBanner: config.showTestModeBanner ?? true,
+    reportDirectory: config.reportDirectory?.trim() || '',
+    reportPublicBaseUrl: config.reportPublicBaseUrl?.trim() || '',
     uiLocked: config.uiLocked ?? envFlag('DATABUFF_DSH_UI_LOCKED'),
   }
 }
@@ -248,7 +254,10 @@ export async function apply(ctx: Context, input: Config = {}): Promise<void> {
 
   // This is the only filesystem mutation exposed to ChatBI. It is scoped to
   // the agent and can write only sanitized HTML below databuff-reports.
-  registerReportTool(ctx)
+  registerReportTool(ctx, {
+    directory: config.reportDirectory,
+    publicBaseUrl: config.reportPublicBaseUrl,
+  })
 
   // The selected hero role reaches the model as injected context instead of
   // user text, so the transcript bubble keeps the prompt the user typed.

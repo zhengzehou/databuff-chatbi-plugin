@@ -33,6 +33,17 @@ describe('DataBuff tool policy', () => {
     expect(config.allowedTools).toEqual(['queryMetricData'])
     expect(config.authCheckIntervalMs).toBe(10_000)
     expect(config.authRequired).toBe(true)
+    expect(config.reportDirectory).toBe('')
+    expect(config.reportPublicBaseUrl).toBe('')
+  })
+
+  it('trims configured report storage and public URL values', () => {
+    const config = normalizeConfig({
+      reportDirectory: ' /data/reports ',
+      reportPublicBaseUrl: ' https://dsh.example.test/ai/ ',
+    })
+    expect(config.reportDirectory).toBe('/data/reports')
+    expect(config.reportPublicBaseUrl).toBe('https://dsh.example.test/ai/')
   })
 
   it('keeps the administration surfaces visible unless the switch is set', () => {

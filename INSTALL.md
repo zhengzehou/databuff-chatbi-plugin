@@ -16,21 +16,21 @@ MCP URL, transport, or token. Install it into the profile that runs DSH:
 ```powershell
 $env:DATABUFF_DSH_WORKSPACE_ROOT = 'D:\databuff\dsh-workspace'
 
-dsh plugin --profile web add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.8.tgz'
+dsh plugin --profile web add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.10.tgz'
 ```
 
 Replace web with the profile that runs your DSH service if it is different.
 Restart that service after installation. For a Tauri profile, use:
 
 ```powershell
-dsh plugin --profile tauri add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.8.tgz'
+dsh plugin --profile tauri add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.10.tgz'
 ```
 
 For Linux:
 
 ```sh
 export DATABUFF_DSH_WORKSPACE_ROOT='/data/logs/dsh/workspace'
-dsh plugin --profile web add '/opt/packages/databuff-dsh-plugin-chatbi-0.1.8.tgz'
+dsh plugin --profile web add '/opt/packages/databuff-dsh-plugin-chatbi-0.1.10.tgz'
 ```
 
 The workspace variable is independent of MCP and is optional when the default
@@ -69,6 +69,26 @@ In production, set DATABUFF_AUTH_REQUIRED=true and configure
 DATABUFF_AUTH_STATUS_URL, DATABUFF_LOGIN_URL, and DATABUFF_DSH_REDIRECT_URL
 for the DataBuff deployment. DATABUFF_AUTH_REQUIRED=false is intended only
 for local testing.
+
+## HTML report storage and download
+
+Reports are stored under the session workspace's `databuff-reports` directory
+by default. Configure an absolute path, or a path relative to each session
+workspace, in the DSH service environment:
+
+```sh
+export DATABUFF_DSH_REPORT_DIR='/data/dsh/reports'
+export DATABUFF_DSH_REPORT_PUBLIC_BASE_URL='https://opt.beta.uletm.com/dsh'
+```
+
+The DSH service user must be able to write to the configured directory. The
+tool returns a browser-openable report URL and a direct attachment download
+link. When DSH is behind a reverse proxy, forward
+`/databuff-chatbi/reports/` to the DSH web server and preserve its query string.
+If the public URL includes a path prefix, rewrite that prefix before forwarding
+the route. Set the public base URL to the browser-visible DSH origin, including
+any path prefix. The default public base URL is https://opt.beta.uletm.com/dsh; override
+it if your deployment uses a different address.
 
 ## Verify
 
