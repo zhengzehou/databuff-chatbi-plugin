@@ -77,7 +77,7 @@
 
 # Host-side enforcement: locked clients cannot choose another cwd or preset,
 # even by calling session.create directly. The server directory is created at
-# startup. Admin mode disables the rewrite and restores the picker.
+# startup. Admin mode disables the rewrite unless the explicit hide switch is set.
 - insert:
     # DSH 0.1.7 declares presets as ordinary profile rows. Reuse the bundled
     # composition file through Cordis include so the legacy standalone preset
@@ -115,8 +115,12 @@
       name: '@databuff/dsh-plugin-chatbi/workspace-policy'
       config:
         locked: !!js >-
-          (process.env.DATABUFF_DSH_WORKSPACE_LOCKED || 'true').toLowerCase() !== 'false'
-          && (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+          (() => {
+            const hide = process.env.DATABUFF_DSH_HIDE_ADD_WORKSPACE;
+            if (hide !== undefined && hide.trim() !== '') return hide.trim().toLowerCase() !== 'false';
+            return (process.env.DATABUFF_DSH_WORKSPACE_LOCKED || 'true').toLowerCase() !== 'false'
+              && (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true';
+          })()
         root: !!js >-
           process.env.DATABUFF_DSH_WORKSPACE_ROOT
           || (process.platform === 'linux'
@@ -126,5 +130,9 @@
 
 - id: directory-picker
   disabled: !!js >-
-    (process.env.DATABUFF_DSH_WORKSPACE_LOCKED || 'true').toLowerCase() !== 'false'
-    && (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true'
+    (() => {
+      const hide = process.env.DATABUFF_DSH_HIDE_ADD_WORKSPACE;
+      if (hide !== undefined && hide.trim() !== '') return hide.trim().toLowerCase() !== 'false';
+      return (process.env.DATABUFF_DSH_WORKSPACE_LOCKED || 'true').toLowerCase() !== 'false'
+        && (process.env.DATABUFF_DSH_ADMIN_MODE || 'false').toLowerCase() !== 'true';
+    })()

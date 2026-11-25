@@ -12,6 +12,17 @@ export interface Config {
   agentPreset?: string
 }
 
+export function resolveWorkspaceLock(
+  hideAddWorkspace = process.env.DATABUFF_DSH_HIDE_ADD_WORKSPACE,
+  legacyLocked = process.env.DATABUFF_DSH_WORKSPACE_LOCKED,
+  adminMode = process.env.DATABUFF_DSH_ADMIN_MODE,
+): boolean {
+  const explicit = hideAddWorkspace?.trim()
+  if (explicit) return explicit.toLowerCase() !== 'false'
+  return (legacyLocked || 'true').toLowerCase() !== 'false'
+    && (adminMode || 'false').toLowerCase() !== 'true'
+}
+
 interface SessionControllerLike {
   create(request: Record<string, unknown>): unknown
 }
@@ -42,11 +53,14 @@ export function resolveWorkspaceRoot(
 }
 
 export async function apply(ctx: Context, input: Config = {}): Promise<void> {
-  const locked = input.locked !== false
+  const locked = input.locked ?? resolveWorkspaceLock()
   const browserConfig: BrowserWorkspaceConfig = { locked }
   ctx.effect(() => ctx.webServer.tapIndex((html) => {
     const json = JSON.stringify(browserConfig).replaceAll('<', '\\u003c')
-    const script = `<script>window.__DATABUFF_WORKSPACE_CONFIG__=${json};window.__DATABUFF_WORKSPACE_LOCKED__=${JSON.stringify(locked)}</script>`
+    const workspaceActionStyle = locked
+      ? `<style id="databuff-hide-workspace-add">button[aria-label^="添加工作区"],button[aria-label^="Add workspace"],button[title^="添加工作区"],button[title^="Add workspace"]{display:none!important}</style>`
+      : ''
+    const script = `${workspaceActionStyle}<script>window.__DATABUFF_WORKSPACE_CONFIG__=${json};window.__DATABUFF_WORKSPACE_LOCKED__=${JSON.stringify(locked)}</script>`
     const index = html.indexOf('<head>')
     return index === -1 ? `${script}${html}` : `${html.slice(0, index + 6)}${script}${html.slice(index + 6)}`
   }), 'databuff-chatbi.workspace-browser-config')

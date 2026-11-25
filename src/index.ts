@@ -13,6 +13,7 @@ import { registerReportTool } from './report'
 import {
   CHATBI_ROLE_SOURCE_KIND,
   CHATBI_ROLE_SYNC_PATH,
+  parseChatbiRoleSyncPayload,
   resolveChatbiRole,
   roleDirectiveSummary,
   roleDirectiveText,
@@ -91,7 +92,8 @@ export function normalizeConfig(config: Config = {}): Required<Config> {
   }
 }
 
-const MCP_TOOL_WAIT_TIMEOUT_MS = 15_000
+// MCP 首次发现可能发生在启动后数十秒；15 秒太短，会在工具上线前误报。
+const MCP_TOOL_WAIT_TIMEOUT_MS = 60_000
 
 async function waitForMcpTools(
   ctx: Context,
@@ -133,20 +135,24 @@ function rememberRole(sessionId: string, roleKey: string): void {
   }
 }
 
-/** Read one bounded JSON body, or undefined when it is absent, oversized, or not JSON. */
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+type JsonBodyResult =
+  | { ok: true; value: unknown }
+  | { ok: false; status: 400 | 413 }
+
+/** Read one bounded JSON body and distinguish malformed input from oversized input. */
+async function readJsonBody(req: IncomingMessage): Promise<JsonBodyResult> {
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
     const buffer = chunk as Buffer
     size += buffer.length
-    if (size > ROLE_SYNC_MAX_BODY_BYTES) return undefined
+    if (size > ROLE_SYNC_MAX_BODY_BYTES) return { ok: false, status: 413 }
     chunks.push(buffer)
   }
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+    return { ok: true, value: JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown }
   } catch {
-    return undefined
+    return { ok: false, status: 400 }
   }
 }
 
@@ -159,26 +165,45 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
  */
 function registerRoleSyncRoute(ctx: Context): void {
   if (roleSyncRouteRegistered) return
-  roleSyncRouteRegistered = true
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: CHATBI_ROLE_SYNC_PATH,
-    handler: async (req: IncomingMessage, res: ServerResponse) => {
-      if (req.method !== 'POST') {
-        res.writeHead(405, { allow: 'POST', 'content-type': 'text/plain' })
-        res.end('method not allowed')
-        return
-      }
-      const body = await readJsonBody(req)
-      const sessionId = typeof (body as { sessionId?: unknown } | null)?.sessionId === 'string'
-        ? (body as { sessionId: string }).sessionId
-        : ''
-      const role = resolveChatbiRole((body as { role?: unknown } | null)?.role)
-      if (sessionId) rememberRole(sessionId, role.key)
-      res.writeHead(204, { 'cache-control': 'no-store' })
-      res.end()
-    },
-  }), 'databuff-chatbi.role-sync-route')
+  ctx.effect(() => {
+    const dispose = ctx.webServer.register({
+      kind: 'exact',
+      path: CHATBI_ROLE_SYNC_PATH,
+      handler: async (req: IncomingMessage, res: ServerResponse) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { allow: 'POST', 'content-type': 'text/plain' })
+          res.end('method not allowed')
+          return
+        }
+        const body = await readJsonBody(req)
+        if (!body.ok) {
+          res.writeHead(body.status, {
+            'cache-control': 'no-store',
+            'content-type': 'text/plain; charset=utf-8',
+          })
+          res.end(body.status === 413 ? 'payload too large' : 'invalid JSON body')
+          return
+        }
+        const payload = parseChatbiRoleSyncPayload(body.value)
+        if (!payload) {
+          res.writeHead(400, {
+            'cache-control': 'no-store',
+            'content-type': 'text/plain; charset=utf-8',
+          })
+          res.end('invalid role payload')
+          return
+        }
+        rememberRole(payload.sessionId, payload.role.key)
+        res.writeHead(204, { 'cache-control': 'no-store' })
+        res.end()
+      },
+    })
+    roleSyncRouteRegistered = true
+    return () => {
+      roleSyncRouteRegistered = false
+      dispose()
+    }
+  }, 'databuff-chatbi.role-sync-route')
 }
 
 /**
@@ -236,10 +261,14 @@ export async function apply(ctx: Context, input: Config = {}): Promise<void> {
   const visibleTools = await waitForMcpTools(ctx, allowed)
   const configuredTools = visibleTools.filter(toolName => isAllowedTool(toolName, allowed))
   if (configuredTools.length === 0) {
+    const sample = visibleTools.slice(0, 20).join(', ') || '(none)'
+    const expected = `mcp__${config.serverName}__${DEFAULT_ALLOWED_TOOLS[0]}`
     throw new Error(
       `DataBuff MCP server "${config.serverName}" is not available in the DSH MCP settings, `
       + 'is not connected, or exposes no supported tools. Configure a streamable-http MCP server '
-      + `named "${config.serverName}" in DSH before starting this preset.`,
+      + `named "${config.serverName}" in DSH before starting this preset. `
+      + `Visible tools (${visibleTools.length}): ${sample}. `
+      + `Expected tool names look like "${expected}".`,
     )
   }
   const deniedTools = visibleTools

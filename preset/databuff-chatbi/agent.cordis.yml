@@ -102,8 +102,8 @@
   name: '@databuff/dsh-plugin-chatbi'
   config:
     serverName: chatbi-databuff
-    authRequired: !!js '(process.env.DATABUFF_AUTH_REQUIRED || "false") !== "false"'
+    authRequired: !!js '(process.env.DATABUFF_AUTH_REQUIRED || "true").toLowerCase() !== "false"'
     authStatusUrl: !!js 'process.env.DATABUFF_AUTH_STATUS_URL || "/webapi/api/v1/dsh/auth/status"'
     loginUrl: !!js 'process.env.DATABUFF_LOGIN_URL || "/databuff/login"'
     redirectUrl: !!js 'process.env.DATABUFF_DSH_REDIRECT_URL || ""'
-    showTestModeBanner: false
+    showTestModeBanner: true

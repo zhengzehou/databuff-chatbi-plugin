@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   DEFAULT_LINUX_WORKSPACE_ROOT,
+  resolveWorkspaceLock,
   resolveWorkspaceRoot,
 } from '../src/workspace-policy'
 
@@ -30,5 +31,17 @@ describe('workspace root resolution', () => {
   it('keeps profile-relative defaults on non-Linux platforms', () => {
     delete process.env.DATABUFF_DSH_WORKSPACE_ROOT
     expect(resolveWorkspaceRoot(undefined, 'win32', 'C:/dsh-profile')).toBe('C:\\dsh-profile\\workspace')
+  })
+})
+
+describe('workspace locking', () => {
+  it('lets the explicit hide switch override admin mode', () => {
+    expect(resolveWorkspaceLock('true', 'false', 'true')).toBe(true)
+    expect(resolveWorkspaceLock('false', 'true', 'false')).toBe(false)
+  })
+
+  it('preserves the legacy lock and admin switches when unset', () => {
+    expect(resolveWorkspaceLock(undefined, 'true', 'false')).toBe(true)
+    expect(resolveWorkspaceLock(undefined, 'true', 'true')).toBe(false)
   })
 })

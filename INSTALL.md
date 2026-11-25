@@ -4,7 +4,7 @@ This package is a DSH bundle for the DataBuff/APM ChatBI agent.
 
 ## Requirements
 
-- DSH 0.1.7-alpha.1, 0.1.7-alpha.2, or 0.2.1-alpha.2
+- DSH stable release `>=0.2.2` (pre-release versions are not supported)
 - DSH MCP settings containing a streamable-http server named chatbi-databuff
 - Node.js supported by the installed DSH release
 
@@ -16,21 +16,21 @@ MCP URL, transport, or token. Install it into the profile that runs DSH:
 ```powershell
 $env:DATABUFF_DSH_WORKSPACE_ROOT = 'D:\databuff\dsh-workspace'
 
-dsh plugin --profile web add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.6.tgz'
+dsh plugin --profile web add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.8.tgz'
 ```
 
 Replace web with the profile that runs your DSH service if it is different.
 Restart that service after installation. For a Tauri profile, use:
 
 ```powershell
-dsh plugin --profile tauri add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.6.tgz'
+dsh plugin --profile tauri add 'C:\Downloads\databuff-dsh-plugin-chatbi-0.1.8.tgz'
 ```
 
 For Linux:
 
 ```sh
 export DATABUFF_DSH_WORKSPACE_ROOT='/data/logs/dsh/workspace'
-dsh plugin --profile web add '/opt/packages/databuff-dsh-plugin-chatbi-0.1.6.tgz'
+dsh plugin --profile web add '/opt/packages/databuff-dsh-plugin-chatbi-0.1.8.tgz'
 ```
 
 The workspace variable is independent of MCP and is optional when the default

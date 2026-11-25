@@ -1,6 +1,6 @@
 {
   "name": "@databuff/dsh-plugin-chatbi",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "private": true,
   "description": "Restricted DataBuff APM ChatBI agent for DeepSeek Harness",
   "type": "module",
@@ -24,19 +24,12 @@
       "patch": "./cordis.patch.yml"
     },
     "engines": {
-      "dsh": "0.1.7-alpha.1 || 0.1.7-alpha.2 || ^0.2.1-alpha.2"
+      "dsh": ">=0.2.2"
     },
     "client": {
       "inject": ["@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-session", "@deepseek-ai/dsh-client-ui-workspace"],
       "platform": "web",
       "immediately": true
-    },
-    "compatibility": {
-      "dshReleases": {
-        "0.1.7-alpha.1": "compatible",
-        "0.1.7-alpha.2": "compatible",
-        "0.2.1-alpha.2": "compatible"
-      }
     }
   },
   "files": [
@@ -54,22 +47,22 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.3 || ^4.0.5-alpha.0",
-    "@deepseek-ai/dsh-agent": "0.1.7-alpha.1 || 0.1.7-alpha.2 || ^0.2.1-alpha.2",
-    "@deepseek-ai/dsh-llm": "0.1.7-alpha.1 || 0.1.7-alpha.2 || ^0.2.1-alpha.2",
-    "@deepseek-ai/dsh-persona": "0.1.7-alpha.1 || 0.1.7-alpha.2 || ^0.2.1-alpha.2",
-    "@deepseek-ai/dsh-skill-filesystem": "0.1.7-alpha.1 || 0.1.7-alpha.2 || ^0.2.1-alpha.2",
-    "@deepseek-ai/dsh-tool-skill": "0.1.7-alpha.1 || 0.1.7-alpha.2 || ^0.2.1-alpha.2",
-    "@deepseek-ai/dsh-tools": "0.1.7-alpha.1 || 0.1.7-alpha.2 || ^0.2.1-alpha.2"
+    "@deepseek-ai/dsh-agent": ">=0.2.2",
+    "@deepseek-ai/dsh-llm": ">=0.2.2",
+    "@deepseek-ai/dsh-persona": ">=0.2.2",
+    "@deepseek-ai/dsh-skill-filesystem": ">=0.2.2",
+    "@deepseek-ai/dsh-tool-skill": ">=0.2.2",
+    "@deepseek-ai/dsh-tools": ">=0.2.2"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.5-alpha.1",
-    "@deepseek-ai/dsh-agent": "0.2.1-alpha.2",
-    "@deepseek-ai/dsh-host-webserver": "0.2.1-alpha.2",
-    "@deepseek-ai/dsh-llm": "0.2.1-alpha.2",
-    "@deepseek-ai/dsh-persona": "0.2.1-alpha.2",
-    "@deepseek-ai/dsh-skill-filesystem": "0.2.1-alpha.2",
-    "@deepseek-ai/dsh-tool-skill": "0.2.1-alpha.2",
-    "@deepseek-ai/dsh-tools": "0.2.1-alpha.2",
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-agent": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-host-webserver": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-persona": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-skill-filesystem": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-tool-skill": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.5",
     "@types/node": "^22.20.0",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3",

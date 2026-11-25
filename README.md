@@ -1,13 +1,10 @@
 # DataBuff ChatBI plugin for DSH
 
-面向 DeepSeek Harness 的 DataBuff/APM 专用 Agent 插件。当前验证支持：
+面向 DeepSeek Harness 的 DataBuff/APM 专用 Agent 插件。要求 DSH 稳定版 `>=0.2.2`；
+不支持低于 `0.2.2` 的版本或预发布版。
 
-- `0.1.7-alpha.1`
-- `0.1.7-alpha.2`
-- `0.2.1-alpha.2`
-
-插件只把完成兼容验证的 DSH 发行版标记为兼容；未来版本需要通过类型检查、测试、
-构建和集成启动验证后再加入 `package.json#dsh.compatibility.dshReleases`。
+当前 npm registry 尚未发布稳定版 `0.2.2` 或更高版本；项目构建依赖仍固定在
+`0.2.2-rc.5`，因此稳定版的运行时集成验证尚未完成。
 
 它提供以下边界：
 
@@ -136,9 +133,20 @@ $env:DATABUFF_DSH_WORKSPACE_ROOT = 'D:\databuff\dsh-workspaces'
 $env:DATABUFF_DSH_WORKSPACE_LOCKED = 'true'
 ```
 
-未配置时，非 Linux 默认使用当前 DSH profile 下的 `workspace` 目录；Linux 默认使用
-`/data/logs/dsh/workspace`。修改变量后必须重启 DSH。管理员模式会临时解除工作区覆盖
-并恢复目录选择器。生产多用户环境应在身份接入后把根目录进一步划分为
+需要明确隐藏“添加/选择工作区”并始终使用默认工作区时，设置：
+
+```powershell
+$env:DATABUFF_DSH_HIDE_ADD_WORKSPACE = 'true'
+```
+
+该变量同时关闭工作区选择入口并在服务端固定工作区，优先级高于
+`DATABUFF_DSH_ADMIN_MODE`。设为 `false` 可重新允许添加或选择工作区；未设置时
+沿用 `DATABUFF_DSH_WORKSPACE_LOCKED` 与 `DATABUFF_DSH_ADMIN_MODE` 的既有行为。
+
+未配置根目录时，非 Linux 默认使用当前 DSH profile 下的 `workspace` 目录；Linux 默认使用
+`/data/logs/dsh/workspace`。修改变量后必须重启 DSH。未显式设置
+`DATABUFF_DSH_HIDE_ADD_WORKSPACE` 时，管理员模式会临时解除工作区覆盖并恢复目录选择器。
+生产多用户环境应在身份接入后把根目录进一步划分为
 `<tenantId>\<userId>`，避免用户间共享可写目录。插件会尝试递归创建 Linux 默认目录，
 若 DSH 服务用户没有权限，启动/新建会话时会提示具体目录和权限错误；也可以通过
 `DATABUFF_DSH_WORKSPACE_ROOT` 指定其他可写目录。

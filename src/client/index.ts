@@ -110,14 +110,17 @@ async function publishSelectedRole(session: unknown): Promise<void> {
   const sessionId = sessionIdOf(session)
   if (!sessionId) return
   try {
-    await fetch(CHATBI_ROLE_SYNC_PATH, {
+    const response = await fetch(CHATBI_ROLE_SYNC_PATH, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify({ sessionId, role: getSelectedRole() }),
     })
-  } catch {
-    /* Offline or blocked: the host keeps its previous or default role. */
+    if (!response.ok) {
+      console.warn(`DataBuff ChatBI role sync failed with HTTP ${response.status}.`)
+    }
+  } catch (error) {
+    console.warn('DataBuff ChatBI role sync failed; the host will use its previous or default role.', error)
   }
 }
 

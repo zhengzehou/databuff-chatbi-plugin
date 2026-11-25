@@ -47,6 +47,19 @@ export const CHATBI_ROLE_SOURCE_KIND = 'databuff-role'
  */
 export const CHATBI_ROLE_SYNC_PATH = '/dsh-chatbi-role'
 
+/** Validate the browser's role report before storing it for a session. */
+export function parseChatbiRoleSyncPayload(value: unknown): {
+  sessionId: string
+  role: ChatbiRole
+} | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const payload = value as Record<string, unknown>
+  const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : ''
+  const role = CHATBI_ROLES.find(item => item.key === payload.role)
+  if (!sessionId || !role) return undefined
+  return { sessionId, role }
+}
+
 /** Resolve a reported role key, falling back to the default role. */
 export function resolveChatbiRole(key: unknown): ChatbiRole {
   return CHATBI_ROLES.find(role => role.key === key)
