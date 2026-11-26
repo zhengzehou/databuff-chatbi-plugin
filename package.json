@@ -1,6 +1,6 @@
 {
   "name": "@databuff/dsh-plugin-chatbi",
-  "version": "0.1.13",
+  "version": "0.1.15",
   "private": true,
   "description": "Restricted DataBuff APM ChatBI agent for DeepSeek Harness",
   "type": "module",

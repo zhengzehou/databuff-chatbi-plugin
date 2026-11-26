@@ -126,7 +126,8 @@ Remove-Item Env:DATABUFF_DSH_ADMIN_MODE
 
 `DATABUFF_DSH_ADMIN_MODE` 是整个 DSH 实例的服务端开关，会解锁相应的宿主管理操作，
 并让浏览器管理控件对所有用户可见。浏览器也可通过
-`localStorage.setItem('dsh_admin', 'zmzAdmin')` 单独显示受控的右侧栏、底部面板和账号菜单；
+`localStorage.setItem('dsh_admin', 'zmzAdmin')` 单独显示受控的右侧栏、底部面板、
+全局面板导航、侧栏底部操作区和账号菜单；
 任意一种条件成立即可显示这些控件。该值只控制前端显隐，用户可自行修改，不能作为身份
 认证或服务端授权。工作区选择、Agent preset 等宿主策略仍由上述环境变量控制。
 
