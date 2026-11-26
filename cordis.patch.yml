@@ -5,8 +5,9 @@
 # preset roster. The Settings and Plugins surfaces stay visible and can be
 # hidden with DATABUFF_DSH_UI_LOCKED=true; the remaining administration
 # surfaces (preset switching, directory picker) require
-# DATABUFF_DSH_ADMIN_MODE=true. These switches are intentionally not exposed
-# in the browser UI.
+# DATABUFF_DSH_ADMIN_MODE=true. This server-wide switch is passed to the client
+# only to control admin UI visibility; localStorage can also show the UI but
+# does not grant server-side privileges.
 # The default preset is a whole-profile setting, and `agent-preset-registry` is
 # NOT a row this bundle inserts: a plugin toggle-off only disables the rows the
 # bundle owns (the `insert:` list below), so a hard-coded `databuff-chatbi` here

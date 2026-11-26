@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   DEFAULT_LINUX_WORKSPACE_ROOT,
+  resolveAdminMode,
   resolveWorkspaceLock,
   resolveWorkspaceRoot,
 } from '../src/workspace-policy'
@@ -43,5 +44,11 @@ describe('workspace locking', () => {
   it('preserves the legacy lock and admin switches when unset', () => {
     expect(resolveWorkspaceLock(undefined, 'true', 'false')).toBe(true)
     expect(resolveWorkspaceLock(undefined, 'true', 'true')).toBe(false)
+  })
+
+  it('recognizes the server-wide admin mode for browser UI visibility', () => {
+    expect(resolveAdminMode('true')).toBe(true)
+    expect(resolveAdminMode('false')).toBe(false)
+    expect(resolveAdminMode(undefined)).toBe(false)
   })
 })

@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { access, constants, mkdir, realpath } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { isAdminAccessGranted } from './admin-access'
 
 export const name = '@databuff/dsh-plugin-chatbi/workspace-policy'
 export const inject = ['sessionController', 'workspaceRegistry', 'webServer']
@@ -12,6 +13,10 @@ export interface Config {
   agentPreset?: string
 }
 
+export function resolveAdminMode(adminMode = process.env.DATABUFF_DSH_ADMIN_MODE): boolean {
+  return (adminMode || 'false').toLowerCase() === 'true'
+}
+
 export function resolveWorkspaceLock(
   hideAddWorkspace = process.env.DATABUFF_DSH_HIDE_ADD_WORKSPACE,
   legacyLocked = process.env.DATABUFF_DSH_WORKSPACE_LOCKED,
@@ -20,7 +25,7 @@ export function resolveWorkspaceLock(
   const explicit = hideAddWorkspace?.trim()
   if (explicit) return explicit.toLowerCase() !== 'false'
   return (legacyLocked || 'true').toLowerCase() !== 'false'
-    && (adminMode || 'false').toLowerCase() !== 'true'
+    && !isAdminAccessGranted(resolveAdminMode(adminMode))
 }
 
 interface SessionControllerLike {
@@ -38,6 +43,7 @@ interface WorkspaceRegistryLike {
 
 interface BrowserWorkspaceConfig {
   locked: boolean
+  adminMode: boolean
   workspaceId?: string
   label?: string
 }
@@ -54,7 +60,10 @@ export function resolveWorkspaceRoot(
 
 export async function apply(ctx: Context, input: Config = {}): Promise<void> {
   const locked = input.locked ?? resolveWorkspaceLock()
-  const browserConfig: BrowserWorkspaceConfig = { locked }
+  const browserConfig: BrowserWorkspaceConfig = {
+    locked,
+    adminMode: resolveAdminMode(),
+  }
   ctx.effect(() => ctx.webServer.tapIndex((html) => {
     const json = JSON.stringify(browserConfig).replaceAll('<', '\\u003c')
     const workspaceActionStyle = locked

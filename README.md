@@ -1,18 +1,21 @@
 # DataBuff ChatBI plugin for DSH
 
 面向 DeepSeek Harness 的 DataBuff/APM 专用 Agent 插件。要求 DSH 稳定版 `>=0.2.2`；
-不支持低于 `0.2.2` 的版本或预发布版。
+同时支持 `0.2.2` 的预发布版本（包括 `0.2.2-rc.5`），不支持低于 `0.2.2` 的稳定版。
 
 当前 npm registry 尚未发布稳定版 `0.2.2` 或更高版本；项目构建依赖仍固定在
 `0.2.2-rc.5`，因此稳定版的运行时集成验证尚未完成。
+
+登录校验默认关闭（测试模式）。生产部署必须设置 `DATABUFF_AUTH_REQUIRED=true` 并配置
+DataBuff 登录状态与跳转地址。
 
 它提供以下边界：
 
 - 使用完整 persona，将 Agent 限定为 DataBuff 和 APM 问题；
 - Uses the chatbi-databuff MCP server registered by DSH;
 - 隐藏所有继承的 DSH 全局工具，并通过最终 guard 只允许明确配置的 DataBuff MCP Tool；
-- 浏览器定期验证 DataBuff 登录，未登录或登录失效时跳转 DataBuff 登录页；
-- `DATABUFF_AUTH_REQUIRED=false` 时进入测试模式并显示警告横幅；
+- 设置 `DATABUFF_AUTH_REQUIRED=true` 后，浏览器定期验证 DataBuff 登录，未登录或登录失效时跳转登录页；
+- 登录校验关闭时进入测试模式并显示警告横幅；
 - 附带问数、巡检 Skill 文档和 DataBuff 专用 preset。
 
 ## 安全边界
@@ -121,7 +124,11 @@ $env:DATABUFF_DSH_ADMIN_MODE = 'true'
 Remove-Item Env:DATABUFF_DSH_ADMIN_MODE
 ```
 
-这些开关都不会暴露到浏览器配置或 Cookie，避免普通客户端自行解锁。
+`DATABUFF_DSH_ADMIN_MODE` 是整个 DSH 实例的服务端开关，会解锁相应的宿主管理操作，
+并让浏览器管理控件对所有用户可见。浏览器也可通过
+`localStorage.setItem('dsh_admin', 'zmzAdmin')` 单独显示受控的右侧栏、底部面板和账号菜单；
+任意一种条件成立即可显示这些控件。该值只控制前端显隐，用户可自行修改，不能作为身份
+认证或服务端授权。工作区选择、Agent preset 等宿主策略仍由上述环境变量控制。
 
 ## 服务端工作区锁定
 

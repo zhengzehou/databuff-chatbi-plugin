@@ -32,9 +32,13 @@ describe('DataBuff tool policy', () => {
     expect(config.serverName).toBe('chatbi-databuff')
     expect(config.allowedTools).toEqual(['queryMetricData'])
     expect(config.authCheckIntervalMs).toBe(10_000)
-    expect(config.authRequired).toBe(true)
+    expect(config.authRequired).toBe(false)
     expect(config.reportDirectory).toBe('')
     expect(config.reportPublicBaseUrl).toBe('')
+  })
+
+  it('allows authentication to be explicitly enabled', () => {
+    expect(normalizeConfig({ authRequired: true }).authRequired).toBe(true)
   })
 
   it('trims configured report storage and public URL values', () => {

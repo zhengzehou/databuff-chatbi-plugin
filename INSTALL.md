@@ -4,7 +4,7 @@ This package is a DSH bundle for the DataBuff/APM ChatBI agent.
 
 ## Requirements
 
-- DSH stable release `>=0.2.2` (pre-release versions are not supported)
+- DSH stable release `>=0.2.2`; pre-releases of `0.2.2` (including `0.2.2-rc.5`) are supported
 - DSH MCP settings containing a streamable-http server named chatbi-databuff
 - Node.js supported by the installed DSH release
 
@@ -65,10 +65,10 @@ creation will fail with the server name shown in the error.
 The plugin creates /data/logs/dsh/workspace automatically when the service
 user has permission. Otherwise create it and grant ownership before startup.
 
-In production, set DATABUFF_AUTH_REQUIRED=true and configure
-DATABUFF_AUTH_STATUS_URL, DATABUFF_LOGIN_URL, and DATABUFF_DSH_REDIRECT_URL
-for the DataBuff deployment. DATABUFF_AUTH_REQUIRED=false is intended only
-for local testing.
+Authentication defaults to disabled test mode. In production, set
+DATABUFF_AUTH_REQUIRED=true and configure DATABUFF_AUTH_STATUS_URL,
+DATABUFF_LOGIN_URL, and DATABUFF_DSH_REDIRECT_URL for the DataBuff deployment.
+Do not expose an unauthenticated deployment to untrusted users.
 
 ## HTML report storage and download
 

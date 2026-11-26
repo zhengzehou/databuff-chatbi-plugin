@@ -1,4 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
+import { ADMIN_STORAGE_KEY, isAdminAccessGranted } from '../admin-access'
 import { safeLoginUrl } from '../policy'
 import { CHATBI_ROLE_SYNC_PATH } from '../roles'
 import { getSelectedRole, mountDataBuffHero } from './hero'
@@ -24,6 +25,7 @@ interface LayoutController {
 
 interface LockedWorkspaceConfig {
   locked: boolean
+  adminMode?: boolean
   workspaceId?: string
   label?: string
 }
@@ -190,6 +192,55 @@ function hideNewSessionWorkspacePicker(): () => void {
   sync()
   return () => {
     observer.disconnect()
+    style.remove()
+  }
+}
+
+function gateAdminUi(): () => void {
+  const style = document.createElement('style')
+  style.id = 'databuff-chatbi-admin-ui-visibility-style'
+  style.textContent = `
+    html[data-databuff-chatbi-admin-ui="false"] [data-sidebar-right-expand="true"],
+    html[data-databuff-chatbi-admin-ui="false"] button[aria-label*="右侧边栏"],
+    html[data-databuff-chatbi-admin-ui="false"] button[aria-label*="right sidebar" i],
+    html[data-databuff-chatbi-admin-ui="false"] [data-dsh-bottom-toggle="true"],
+    html[data-databuff-chatbi-admin-ui="false"] [data-inset]:has(button[aria-label="账号菜单"]),
+    html[data-databuff-chatbi-admin-ui="false"] [data-inset]:has(button[aria-label="Account menu"]),
+    html[data-databuff-chatbi-admin-ui="false"] button[aria-label="账号菜单"],
+    html[data-databuff-chatbi-admin-ui="false"] button[aria-label="Account menu"] {
+      display: none !important;
+    }
+  `
+  document.head.appendChild(style)
+
+  let storageWarningLogged = false
+  const sync = () => {
+    let storageValue: string | null = null
+    try {
+      storageValue = window.localStorage.getItem(ADMIN_STORAGE_KEY)
+    } catch (error) {
+      if (!storageWarningLogged) {
+        console.warn('DataBuff ChatBI could not read the admin display flag from localStorage.', error)
+        storageWarningLogged = true
+      }
+    }
+    const enabled = isAdminAccessGranted(
+      window.__DATABUFF_WORKSPACE_CONFIG__?.adminMode === true,
+      storageValue,
+    )
+    document.documentElement.setAttribute('data-databuff-chatbi-admin-ui', String(enabled))
+  }
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === ADMIN_STORAGE_KEY || event.key === null) sync()
+  }
+  sync()
+  window.addEventListener('storage', onStorage)
+  window.addEventListener('focus', sync)
+
+  return () => {
+    window.removeEventListener('storage', onStorage)
+    window.removeEventListener('focus', sync)
+    document.documentElement.removeAttribute('data-databuff-chatbi-admin-ui')
     style.remove()
   }
 }
@@ -389,6 +440,7 @@ export async function checkAuthentication(config: BrowserConfig): Promise<boolea
 export function apply(ctx: Context): void {
   const config = window.__DATABUFF_CHATBI_CONFIG__
 
+  ctx.effect(gateAdminUi, 'databuff-chatbi.admin-ui-visibility')
   ctx.effect(() => lockSettingsAndPetEntrances(ctx), 'databuff-chatbi.admin-surface-lock')
   ctx.effect(() => watchChatBiModeEffects(ctx), 'databuff-chatbi.mode-effects')
 

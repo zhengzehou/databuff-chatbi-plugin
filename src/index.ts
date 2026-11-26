@@ -86,7 +86,7 @@ export function normalizeConfig(config: Config = {}): Required<Config> {
     allowedTools: config.allowedTools?.length
       ? [...new Set(config.allowedTools.map(value => value.trim()).filter(Boolean))]
       : [...DEFAULT_ALLOWED_TOOLS],
-    authRequired: config.authRequired ?? true,
+    authRequired: config.authRequired ?? false,
     authStatusUrl: config.authStatusUrl?.trim() || '/webapi/api/v1/dsh/auth/status',
     loginUrl: config.loginUrl?.trim() || '/databuff/login',
     redirectUrl: config.redirectUrl?.trim() || '',

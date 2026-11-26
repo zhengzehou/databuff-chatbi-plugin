@@ -1,6 +1,6 @@
 {
   "name": "@databuff/dsh-plugin-chatbi",
-  "version": "0.1.10",
+  "version": "0.1.13",
   "private": true,
   "description": "Restricted DataBuff APM ChatBI agent for DeepSeek Harness",
   "type": "module",
@@ -24,7 +24,7 @@
       "patch": "./cordis.patch.yml"
     },
     "engines": {
-      "dsh": ">=0.2.2"
+      "dsh": ">=0.2.2-0"
     },
     "client": {
       "inject": ["@deepseek-ai/dsh-client-ui-conversation", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-session", "@deepseek-ai/dsh-client-ui-workspace"],
@@ -37,6 +37,7 @@
     "preset",
     "skills",
     "cordis.patch.yml",
+    ".env.example",
     "README.md",
     "INSTALL.md"
   ],
@@ -47,12 +48,12 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.3 || ^4.0.5-alpha.0",
-    "@deepseek-ai/dsh-agent": ">=0.2.2",
-    "@deepseek-ai/dsh-llm": ">=0.2.2",
-    "@deepseek-ai/dsh-persona": ">=0.2.2",
-    "@deepseek-ai/dsh-skill-filesystem": ">=0.2.2",
-    "@deepseek-ai/dsh-tool-skill": ">=0.2.2",
-    "@deepseek-ai/dsh-tools": ">=0.2.2"
+    "@deepseek-ai/dsh-agent": ">=0.2.2-0",
+    "@deepseek-ai/dsh-llm": ">=0.2.2-0",
+    "@deepseek-ai/dsh-persona": ">=0.2.2-0",
+    "@deepseek-ai/dsh-skill-filesystem": ">=0.2.2-0",
+    "@deepseek-ai/dsh-tool-skill": ">=0.2.2-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.2-0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
